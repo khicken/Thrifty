@@ -1,25 +1,66 @@
+from imaging import drawLine
+from ultralytics import YOLO
+import math
 import cv2
-from matplotlib import pyplot as plt
 
 vid = cv2.VideoCapture(0)
 
+# For YOLO model (https://dipankarmedh1.medium.com/real-time-object-detection-with-yolo-and-webcam-enhancing-your-computer-vision-skills-861b97c78993)
+model = YOLO("yolo-Weights/yolov8n.pt")
+classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
+              "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+              "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
+              "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
+              "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
+              "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
+              "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
+              "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
+              "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
+              "teddy bear", "hair drier", "toothbrush"
+              ]
+
 while True:
     # Camera display stuff
-    ret, frame = vid.read() # Read video
+    ret, img = vid.read() # Read video
 
     if not ret: # Error
         print('uh oh! stinky! camera doesn\'t work.')
 
-    cv2.imshow('here\'s the frame', frame) # Display window
+    results = model(img, stream=True)
     
-    # Break display on q
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        print(str(type(frame)))
+    # coordinates
+    for r in results:
+        boxes = r.boxes
+
+        for box in boxes:
+            # bounding box
+            x1, y1, x2, y2 = box.xyxy[0]
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+
+            # put box in cam
+            cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
+
+            # confidence
+            confidence = math.ceil((box.conf[0]*100))/100
+            print("Confidence --->",confidence)
+
+            # class name
+            cls = int(box.cls[0])
+            print("Class name -->", classNames[cls])
+
+            # object details
+            org = [x1, y1]
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            fontScale = 1
+            color = (255, 0, 0)
+            thickness = 2
+
+            cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
+
+    # Other window handling
+    cv2.imshow('Object Detection', img) # Display window
+    if cv2.waitKey(1) == ord('q'): # To break window
         break
 
-    # Image processing stuff
-    img = cv2.imread(frame)
-
-
 vid.release()
-cv2.destroyAllWindows() 
+cv2.destroyAllWindows()
