@@ -1,65 +1,57 @@
-from imaging import drawLine
+from pricing import price
 from ultralytics import YOLO
-import math
-import cv2
+import cv2, math
 
 vid = cv2.VideoCapture(0)
 
 # For YOLO model (https://dipankarmedh1.medium.com/real-time-object-detection-with-yolo-and-webcam-enhancing-your-computer-vision-skills-861b97c78993)
 model = YOLO("yolo-Weights/yolov8n.pt")
-classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
-              "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-              "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-              "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
-              "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
-              "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
-              "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
-              "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
-              "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
-              "teddy bear", "hair drier", "toothbrush"
+classNames = ["shirt", "pants", "shoes", "backpack", "umbrella", "handbag", "tie", # Clothing
+              "glove", "gloves", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", # Garments
+              "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", # Sports Equipment
+              "cup", "fork", "knife", "spoon", "bowl", "chair", "sofa", "pottedplant", "bed", # Cutlery
+              "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", # Electronics, will be a hassle
+              "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", # Tools
+              "teddy bear", "hair drier", "toothbrush", # Miscellaneous
+              "person" # For...fun
               ]
 
 while True:
-    # Camera display stuff
     ret, img = vid.read() # Read video
-
-    if not ret: # Error
-        print('uh oh! stinky! camera doesn\'t work.')
-
-    results = model(img, stream=True)
     
-    # coordinates
+    if not ret: # Camera not found error
+        raise SystemError('Uh oh! Stinky!\nYour camera doesn\'t work.')
+        break
+
+    # Draw bounding boxes with labels
+    results = model(img, stream=True)
     for r in results:
         boxes = r.boxes
 
         for box in boxes:
-            # bounding box
+            # Bounding box
             x1, y1, x2, y2 = box.xyxy[0]
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
 
-            # put box in cam
+            # Place box in frame
             cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
 
-            # confidence
-            confidence = math.ceil((box.conf[0]*100))/100
-            print("Confidence --->",confidence)
-
-            # class name
-            cls = int(box.cls[0])
-            print("Class name -->", classNames[cls])
+            # Metrics
+            cls = int(box.cls[0]) # Class name (object type)
+            confidence = math.ceil((box.conf[0]*100))/100 # Confidence
 
             # object details
+            txt = f'{classNames[cls]} | Confidence: {confidence}'
             org = [x1, y1]
             font = cv2.FONT_HERSHEY_SIMPLEX
             fontScale = 1
             color = (255, 0, 0)
             thickness = 2
-
-            cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
+            cv2.putText(img, txt, org, font, fontScale, color, thickness)
 
     # Other window handling
     cv2.imshow('Object Detection', img) # Display window
-    if cv2.waitKey(1) == ord('q'): # To break window
+    if cv2.waitKey(1) == ord('q'): # Break window
         break
 
 vid.release()
