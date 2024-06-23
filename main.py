@@ -41,7 +41,7 @@ while True:
             confidence = math.ceil((box.conf[0]*100))/100 # Confidence
 
             # object details
-            txt = f'{classNames[cls]} | Confidence: {confidence}'
+            txt = f'{classNames[cls]}, {confidence}'
             org = [x1, y1]
             font = cv2.FONT_HERSHEY_SIMPLEX
             fontScale = 1
