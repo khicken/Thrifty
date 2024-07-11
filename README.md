@@ -1,2 +1,2 @@
 # Thrifty
- Price estimator for items
+This branch is broken and deprecated. Using JS instead.
