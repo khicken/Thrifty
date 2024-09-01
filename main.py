@@ -17,7 +17,7 @@ if __name__ == '__main__':
     start_time = time.time() + 3 # offset start time to give startup time
     interval = 1
 
-    cv2.namedWindow('Thrifty')
+    cv2.namedWindow('Thrifty', cv2.WINDOW_AUTOSIZE)
 
     while True:
         # read camera data

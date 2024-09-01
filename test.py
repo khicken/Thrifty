@@ -10,12 +10,16 @@ if __name__ == '__main__':
         quit(1)
     
     ret, ref_frame = cap.read()
+    ref_frame_hsv = cv2.cvtColor(ref_frame, cv2.COLOR_BGR2HSV)
     ref_set = False
     movement = 0 # counter for object to register (interval * movement = time to activate)
     start_time = time.time() + 3 # offset start time to give startup time
     interval = 1
 
-    cv2.namedWindow('Thrifty')
+    cv2.namedWindow('Thrifty', cv2.WINDOW_AUTOSIZE)
+
+    height, width, _ = ref_frame.shape
+    grid_image = np.zeros((height * 2, width * 2, 3), dtype=np.uint8)
 
     def update_threshold(val):
         global threshold_value
@@ -37,6 +41,8 @@ if __name__ == '__main__':
         gray2 = cv2.cvtColor(img2, cv2.COLOR_RGB2GRAY)
         return np.mean(gray1) > np.mean(gray2)
     
+    fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=True)
+
     while True:
         # read camera data
         ret, frame = cap.read()
@@ -52,39 +58,42 @@ if __name__ == '__main__':
         # else:
             # diff = cv2.absdiff(frame, ref_frame)
         # find absolute difference
+        diff = cv2.absdiff(ref_frame, frame) # find absolute difference
         grayed = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY) # make it grayscale
-        blurred = cv2.GaussianBlur(diff, (15, 15), 0) # reduce noise and improve contour detection
+        blurred = cv2.GaussianBlur(grayed, (7, 7), 0) # reduce noise and improve contour detection
         _, thresh = cv2.threshold(blurred, threshold_value, 255, cv2.THRESH_BINARY) # calc threshold
         dilated = cv2.dilate(thresh, None, iterations=3) # dilate (move pixel matrix and fill in center holes)
-        grayed = cv2.cvtColor(dilated, cv2.COLOR_BGR2GRAY) # make it grayscale
-        _, thresh2 = cv2.threshold(grayed, threshold_value2, 255, cv2.THRESH_BINARY) # calc threshold
-        # grayed = cv2.cvtColor(dilated, cv2.COLOR_BGR2GRAY)
-        # contours, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        # print(len(contours))
-        # something = False # just need to detect one anomaly
-        # # draw contours
-        # for contour in contours:
-        #     # Ignore small contours that are not significant
-        #     if cv2.contourArea(contour) < 10000:
-        #         continue
-        #     # Get the bounding box coordinates for the contour
-        #     (x, y, w, h) = cv2.boundingRect(contour)
-        #     # Draw a rectangle around the detected object
-        #     cv2.rectangle(out_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        #     # Optionally, print a message or take another action
-        #     print("Motion detected!")
-            
-            # ref_frame = copy.deepcopy(frame)
-            # start_time = curr_time
 
+        # shadow removal method 1
+        fgmask = fgbg.apply(frame) # apply subtraction
+        _, fgmask = cv2.threshold(fgmask, 220, 255, cv2.THRESH_BINARY) # remove shadows
 
-        cv2.imshow("Thrifty", thresh2)
+        # shadow removal method 2
+        frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) # convert current frame to hsv
+        diff = cv2.absdiff(ref_frame_hsv, frame_hsv) # find abs diff
+        h, s, v = cv2.split(diff) # split HSV channels
+        _, thresh_s = cv2.threshold(s, threshold_value, 255, cv2.THRESH_BINARY) # set threshold on S channel
+        _, thresh_v = cv2.threshold(v, threshold_value, 255, cv2.THRESH_BINARY) # set threshold on V channel
+        motion_mask = cv2.bitwise_or(thresh_s, thresh_v) # combine thresholds to get mask
+
+        moving_objects = cv2.bitwise_and(frame, frame, mask=motion_mask)
+
+        # concat views as grid
+        frame2 = cv2.cvtColor(motion_mask, cv2.COLOR_GRAY2BGR)
+        frame3 = cv2.cvtColor(dilated, cv2.COLOR_GRAY2BGR)
+        frame4 = cv2.cvtColor(fgmask, cv2.COLOR_GRAY2BGR)
+        grid_image[0:height, 0:width] = cv2.resize(moving_objects, (width, height))          # Top-left
+        grid_image[0:height, width:width*2] = cv2.resize(frame2, (width, height)) # Top-right
+        grid_image[height:height*2, 0:width] = cv2.resize(frame3, (width, height)) # Bottom-left
+        grid_image[height:height*2, width:width*2] = cv2.resize(frame4, (width, height)) # Bottom-right
+        cv2.imshow("Thrifty", grid_image)
 
         # key events
         key = cv2.waitKey(1) & 0xFF
         
         if key == ord('s'):
             ref_frame = copy.deepcopy(frame)
+            ref_frame_hsv = cv2.cvtColor(ref_frame, cv2.COLOR_BGR2HSV)
             # start_time = curr_time
             ref_set = True
         if key == ord(' '):
