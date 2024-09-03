@@ -62,7 +62,7 @@ def scraper() -> list:
         iqr = 1.5 * (q3 - q1)
         i = 0
         while i < len(prices):
-            if prices[i] <= 0 or prices[i] >= iqr: # 
+            if prices[i] <= 0 or prices[i] >= iqr:
                 del prices[i]
             else:
                 i += 1
