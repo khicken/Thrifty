@@ -1,7 +1,11 @@
-import time, cv2, copy
+import cv2, time, multiprocessing
 import scraper
 
 debug = True
+
+def worker(queue):
+    out = scraper.scraper()
+    queue.put(out)
 
 if __name__ == '__main__':
     cap = cv2.VideoCapture(0)
@@ -30,9 +34,18 @@ if __name__ == '__main__':
     zoom = 1.0
     width_, height_ = ref_frame.shape[:2]
 
+    # for UI
+    status_text = 'Background image not set'
+    status_color = (0, 0, 255)
+    label_text = 'No object scanned'
+    label_color = (0, 0, 255)
+    def updateStatus(text, col=(0, 0, 255)):
+        status_text = text
+        status_color = col
     cv2.namedWindow('Thrifty', cv2.WINDOW_AUTOSIZE)
     # cv2.createTrackbar('Zoom', 'Thrifty', zoom, 5.0, zoom_img)
 
+    # object detection
     def contours(frame1, frame2, out_frame) -> int:
         diff = cv2.absdiff(frame1, frame2) # find absolute difference
         grayed = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY) # make it grayscale
@@ -71,7 +84,8 @@ if __name__ == '__main__':
                 objects = contours(ref_frame, frame, out_frame)
 
                 if objects > 0:
-                    print(f'Motion detected! Contours found: {objects}')
+
+                    updateStatus(f'Motion detected! Contours found: {objects}')
                     movement_counter = 1
             elif movement_counter > 0 and stationary_counter == 0: # in movement
                 moving_objects = contours(prev_frame, frame, out_frame)
@@ -80,9 +94,9 @@ if __name__ == '__main__':
                 if objects > 0:
                     if moving_objects > 0:
                         movement_counter += 1
-                        print(f'Motion continually detected. Movement counter: {movement_counter}')
+                        updateStatus(f'Motion continually detected. Movement counter: {movement_counter}')
                     else:
-                        print(f'Motion no longer detected. Movement counter set to 0.')
+                        updateStatus('Motion no longer detected. Movement counter set to 0.')
                         movement_counter = 0
                         stationary_counter = 1
                 else:
@@ -94,25 +108,35 @@ if __name__ == '__main__':
                 if objects > 0:
                     if moving_objects == 0:
                         stationary_counter += 1
-                        print(f'Stationary object detected. Stationary counter: {stationary_counter}')
+                        updateStatus(f'Stationary object detected. Stationary counter: {stationary_counter}')
 
                         if stationary_counter >= time_to_activate / interval and not scraping:
-                            print('welp, price scanning ig')
+                            scraping = True # this line is probably not useful, oh well
+                            updateStatus('Scraper activated. Scanning in progress...', (0, 255, 255))
                             cv2.imwrite("temp.png", frame)
-                            print("estimating price...")
-                            time.sleep(2)
-                            print(f'estimated price: {scraper.scraper():.2f}')
-                            scraping = True
+
+                            # multiprocessing
+                            queue = multiprocessing.Queue()
+                            process = multiprocessing.Process(target=worker, args=(queue,))
+                            process.start()
+                            result = queue.get() # waits for result to be available
+                            # process.join() # wait for process to completely finish
+
+                            # output
+                            label_text = f'Estimate price: {result:.2f}'
+                            scraping = False
+                            
                     else:
                         stationary_counter = 0
                         movement_counter = 1
-                        print(f'Motion detected! Stationary counter set to 0.')
+                        updateStatus(f'Motion detected! Stationary counter set to 0.')
                 else:
                     stationary_counter = 0 # reset
             prev_frame = frame
             start_time = curr_time
 
-
+        cv2.putText(out_frame, status_text, (10, 10), cv2.FONT_HERSHEY_COMPLEX, 1, status_color, 2)
+        cv2.putText(out_frame, label_text, (10, 50), cv2.FONT_HERSHEY_COMPLEX, 1, status_color, 2)
         cv2.imshow("Thrifty", out_frame)
 
         # key events
