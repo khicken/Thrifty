@@ -35,13 +35,21 @@ if __name__ == '__main__':
     width_, height_ = ref_frame.shape[:2]
 
     # for UI
+
+    def updateStatus(text, col=(0, 0, 255)):
+        global status_text
+        status_text = text
+        global status_color
+        status_color = col
+    def updateLabel(text, col=(0, 0, 255)):
+        global label_text
+        label_text = text
+        global label_color
+        label_color = col
     status_text = 'Background image not set'
     status_color = (0, 0, 255)
     label_text = 'No object scanned'
     label_color = (0, 0, 255)
-    def updateStatus(text, col=(0, 0, 255)):
-        status_text = text
-        status_color = col
     cv2.namedWindow('Thrifty', cv2.WINDOW_AUTOSIZE)
     # cv2.createTrackbar('Zoom', 'Thrifty', zoom, 5.0, zoom_img)
 
@@ -65,6 +73,9 @@ if __name__ == '__main__':
 
             out += 1
         return out
+    
+    # processes
+    scraping = False
 
     while True:
         # read camera data; frame is the original webcam feed
@@ -111,21 +122,19 @@ if __name__ == '__main__':
                         updateStatus(f'Stationary object detected. Stationary counter: {stationary_counter}')
 
                         if stationary_counter >= time_to_activate / interval and not scraping:
-                            scraping = True # this line is probably not useful, oh well
+                            scraping = True
                             updateStatus('Scraper activated. Scanning in progress...', (0, 255, 255))
                             cv2.imwrite("temp.png", frame)
 
-                            # multiprocessing
-                            queue = multiprocessing.Queue()
-                            process = multiprocessing.Process(target=worker, args=(queue,))
-                            process.start()
-                            result = queue.get() # waits for result to be available
-                            # process.join() # wait for process to completely finish
+                            # # multiprocessing
+                            # queue = multiprocessing.Queue()
+                            # process = multiprocessing.Process(target=worker, args=(queue,))
+                            # process.start()
+                            # result = queue.get() # waits for result to be available
 
                             # output
-                            label_text = f'Estimate price: {result:.2f}'
+                            label_text = f'Estimate price: {scraper.scraper():.2f}'
                             scraping = False
-                            
                     else:
                         stationary_counter = 0
                         movement_counter = 1

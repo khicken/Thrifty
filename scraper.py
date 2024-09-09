@@ -11,7 +11,21 @@ from selenium.webdriver.support import expected_conditions as EC
 
 import numpy as np
 
-def scraper() -> list:
+debug = False
+
+"""Activates scraper to estimate the price of the given image.
+
+Args:
+    img_name: Image name in the temp folder. Example: '1.png'
+
+Returns:
+    A tuple that gives the estimated item name (WIP) and price estimation.
+
+Typical usage example:
+
+    name, price = scraper('1.png')
+"""
+def scraper(img_name: str) -> tuple[str, float]:
     try:
         # create window
         service = Service('./chromedriver.exe')
@@ -31,14 +45,15 @@ def scraper() -> list:
         browser.implicitly_wait(random.uniform(0.5, 2.0))
         browser.find_element(By.CLASS_NAME, 'DV7the').click() # click upload image button
         time.sleep(1)
-        pyautogui.write(os.getcwd() + r'\temp.png') # upload image
+        pyautogui.write(os.getcwd() + fr'\temp\{img_name}') # upload image
         pyautogui.press('enter')
 
         # scrape prices on listing page
         time.sleep(5)
         elements = browser.find_elements(By.CLASS_NAME, 'DdKZJb')
 
-        # time.sleep(60) # for custom price analysis
+        if debug:
+            time.sleep(100) # for custom price analysis
 
         # convert price strings to prices
         prices = []
@@ -68,7 +83,7 @@ def scraper() -> list:
                 i += 1
         
         # new price estimates
-        print(f'median: {np.median(prices)} \n mean: {np.mean(prices)} \n 25th percentile: {np.percentile(prices, 25)} \n 10th percentile: {np.percentile(prices, 10)}')
+        print(f'datapoints: {len(prices)} \n median: {np.median(prices)} \n mean: {np.mean(prices)} \n 25th percentile: {np.percentile(prices, 25)} \n 10th percentile: {np.percentile(prices, 10)}')
         print(f'min: {np.min(prices)} \n max: {np.max(prices)}')
 
         return np.percentile(prices, 20) * 0.25
