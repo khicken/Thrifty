@@ -86,7 +86,7 @@ def scraper(img_name: str) -> tuple[str, float]:
         print(f'datapoints: {len(prices)} \n median: {np.median(prices)} \n mean: {np.mean(prices)} \n 25th percentile: {np.percentile(prices, 25)} \n 10th percentile: {np.percentile(prices, 10)}')
         print(f'min: {np.min(prices)} \n max: {np.max(prices)}')
 
-        return np.percentile(prices, 20) * 0.25
+        return 'null', np.percentile(prices, 20) * 0.25
     except Exception as e:
         print(f"An error occurred: {e}")
         quit(1)

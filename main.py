@@ -28,14 +28,13 @@ if __name__ == '__main__':
     start_time = time.time() + 3 # offset start time to give startup time
     interval = 0.25 # intervals to run checks
 
-    # for customization
+    # for UI customization
     def zoom_img(val):
         global zoom
     zoom = 1.0
     width_, height_ = ref_frame.shape[:2]
 
     # for UI
-
     def updateStatus(text, col=(0, 0, 255)):
         global status_text
         status_text = text
@@ -46,10 +45,11 @@ if __name__ == '__main__':
         label_text = text
         global label_color
         label_color = col
-    status_text = 'Background image not set'
+    status_text = 'Background image not set...'
     status_color = (0, 0, 255)
     label_text = 'No object scanned'
     label_color = (0, 0, 255)
+
     cv2.namedWindow('Thrifty', cv2.WINDOW_AUTOSIZE)
     # cv2.createTrackbar('Zoom', 'Thrifty', zoom, 5.0, zoom_img)
 
@@ -76,6 +76,7 @@ if __name__ == '__main__':
     
     # processes
     scraping = False
+    q = [] # image queue
 
     while True:
         # read camera data; frame is the original webcam feed
@@ -85,8 +86,14 @@ if __name__ == '__main__':
             cap.release()
             cv2.destroyAllWindows()
             quit(1)
-        
-        out_frame = frame
+        out_frame = frame # display frame is out_frame
+
+        # scraping queue
+        if q:
+            updateLabel(f'Scanning {q[0]}', (0, 255, 255))
+            name, price = scraper.scraper(q[0])
+            del q[0]
+            
 
         # object detection
         curr_time = time.time()
@@ -95,7 +102,6 @@ if __name__ == '__main__':
                 objects = contours(ref_frame, frame, out_frame)
 
                 if objects > 0:
-
                     updateStatus(f'Motion detected! Contours found: {objects}')
                     movement_counter = 1
             elif movement_counter > 0 and stationary_counter == 0: # in movement
@@ -124,7 +130,9 @@ if __name__ == '__main__':
                         if stationary_counter >= time_to_activate / interval and not scraping:
                             scraping = True
                             updateStatus('Scraper activated. Scanning in progress...', (0, 255, 255))
-                            cv2.imwrite("temp.png", frame)
+                            cv2.imwrite(f'{len(q) + 1}.png', frame)
+
+                            q.append()
 
                             # # multiprocessing
                             # queue = multiprocessing.Queue()
@@ -144,8 +152,8 @@ if __name__ == '__main__':
             prev_frame = frame
             start_time = curr_time
 
-        cv2.putText(out_frame, status_text, (10, 10), cv2.FONT_HERSHEY_COMPLEX, 1, status_color, 2)
-        cv2.putText(out_frame, label_text, (10, 50), cv2.FONT_HERSHEY_COMPLEX, 1, status_color, 2)
+        cv2.putText(out_frame, status_text, (10, 50), cv2.FONT_HERSHEY_COMPLEX, 1, status_color, 2)
+        cv2.putText(out_frame, label_text, (10, 100), cv2.FONT_HERSHEY_COMPLEX, 1, status_color, 2)
         cv2.imshow("Thrifty", out_frame)
 
         # key events
@@ -154,6 +162,7 @@ if __name__ == '__main__':
         if key == ord('s'):
             ref_frame = frame
             start_time = curr_time # reset for another interval
+            updateLabel('Background image set!', (0, 255, 0))
             ref_set = True
         elif key == ord(' '):
             cv2.imwrite("temp.png", frame)
