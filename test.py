@@ -1,8 +1,15 @@
 import time, cv2, copy
+import random, os
 import numpy as np
 import scraper
 
-if __name__ == '__main__':
+
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+
+def camTest():
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
@@ -105,3 +112,46 @@ if __name__ == '__main__':
             cap.release()
             cv2.destroyAllWindows()
             quit()
+
+def scraperTest():
+    # create window
+        service = Service('./chromedriver.exe')
+        options = webdriver.ChromeOptions()
+        options.binary_location = './chrome-win64/chrome.exe'
+        #options.add_argument('--headless') # need to fix this later, will have to remove pyautogui
+        browser = webdriver.Chrome(service=service, options=options)
+
+        # boot into google.com like a regular human
+        browser.maximize_window()
+        browser.implicitly_wait(4)
+        browser.get("https://www.google.com/")
+
+        # make the google lens search
+        browser.implicitly_wait(random.uniform(0.5, 2.0))
+        browser.find_element(By.CLASS_NAME, 'nDcEnd').click() # click lens button
+        browser.implicitly_wait(random.uniform(0.5, 2.0))
+        hm = browser.find_element(By.CLASS_NAME, 'DV7the').click() # click upload image button
+        
+        browser.execute_script("""
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.style.display = 'block';
+        document.body.appendChild(input);
+        input.onchange = function() {
+            var file = input.files[0];
+            console.log('File selected:', file.name);
+        };
+        input.click();
+        """)
+        time.sleep(2)
+        file_input = browser.find_element(By.XPATH, '//input[@type="file"]')
+        file_input.send_keys(os.getcwd() + fr'\test.png')  # Change this to the path of your image file
+        time.sleep(10)
+        print(browser.page_source)
+
+x = 10
+def funcTest(y):
+    y = 100
+# x = 3
+if __name__ == '__main__':
+    camTest()

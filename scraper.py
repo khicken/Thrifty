@@ -1,5 +1,4 @@
 import os, re, time, random
-import pyautogui
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -11,7 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 import numpy as np
 
-debug = False
+debug = True
 
 """Activates scraper to estimate the price of the given image.
 
@@ -36,7 +35,7 @@ def scraper(img_name: str) -> tuple[str, float]:
 
         # boot into google.com like a regular human
         browser.maximize_window()
-        browser.implicitly_wait(5)
+        browser.implicitly_wait(4)
         browser.get("https://www.google.com/")
 
         # make the google lens search
@@ -45,15 +44,28 @@ def scraper(img_name: str) -> tuple[str, float]:
         browser.implicitly_wait(random.uniform(0.5, 2.0))
         browser.find_element(By.CLASS_NAME, 'DV7the').click() # click upload image button
         time.sleep(1)
-        pyautogui.write(os.getcwd() + fr'\temp\{img_name}') # upload image
-        pyautogui.press('enter')
+        browser.execute_script("""
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.style.display = 'block';
+        document.body.appendChild(input);
+        input.onchange = function() {
+            var file = input.files[0];
+            console.log('File selected:', file.name);
+        };
+        input.click();
+        """)
+        time.sleep(2)
+        file_input = browser.find_element(By.XPATH, '//input[@type="file"]')
+        img_path = os.getcwd() + fr'\temp\{img_name}'
+        file_input.send_keys(img_path)  # Change this to the path of your image file
 
         # scrape prices on listing page
-        time.sleep(5)
+        time.sleep(8)
         elements = browser.find_elements(By.CLASS_NAME, 'DdKZJb')
 
-        if debug:
-            time.sleep(100) # for custom price analysis
+        # if debug:
+        #     time.sleep(100) # for custom price analysis
 
         # convert price strings to prices
         prices = []
@@ -65,12 +77,13 @@ def scraper(img_name: str) -> tuple[str, float]:
             if not chars: # empty string
                 continue
             price = float(''.join(chars)) * mul
-            print(price)
             prices.append(price)
+        if debug:
+            print(f'from {img_name}: {prices}')
 
         # old price estimates
-        print(f'median: {np.median(prices)} \n mean: {np.mean(prices)} \n 25th percentile: {np.percentile(prices, 25)} \n 10th percentile: {np.percentile(prices, 10)}')
-        print(f'min: {np.min(prices)} \n max: {np.max(prices)}')
+        # print(f'datapoints: {len(prices)} \n median: {np.median(prices)} \n mean: {np.mean(prices)} \n 25th percentile: {np.percentile(prices, 25)} \n 10th percentile: {np.percentile(prices, 10)}')
+        # print(f'min: {np.min(prices)} \n max: {np.max(prices)}')
 
         # price filtering
         q1, q3 = np.percentile(prices, 25), np.percentile(prices, 75)
@@ -83,9 +96,10 @@ def scraper(img_name: str) -> tuple[str, float]:
                 i += 1
         
         # new price estimates
-        print(f'datapoints: {len(prices)} \n median: {np.median(prices)} \n mean: {np.mean(prices)} \n 25th percentile: {np.percentile(prices, 25)} \n 10th percentile: {np.percentile(prices, 10)}')
-        print(f'min: {np.min(prices)} \n max: {np.max(prices)}')
+        print(f'datapoints: {len(prices)} -- median: {np.median(prices)} -- mean: {np.mean(prices)} -- 25th percentile: {np.percentile(prices, 25)} -- 10th percentile: {np.percentile(prices, 10)}')
+        print(f'min: {np.min(prices)} -- max: {np.max(prices)}')
 
+        os.remove(img_path) # bye bye
         return 'null', np.percentile(prices, 20) * 0.25
     except Exception as e:
         print(f"An error occurred: {e}")
