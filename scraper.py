@@ -30,7 +30,10 @@ def scraper(img_name: str) -> tuple[str, float]:
         service = Service('./chromedriver.exe')
         options = webdriver.ChromeOptions()
         options.binary_location = './chrome-win64/chrome.exe'
-        # options.add_argument('--headless') # need to fix this later, will have to remove pyautogui
+        options.add_argument('--headless=new')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
         browser = webdriver.Chrome(service=service, options=options)
 
         # boot into google.com like a regular human
@@ -86,12 +89,14 @@ def scraper(img_name: str) -> tuple[str, float]:
         # print(f'min: {np.min(prices)} \n max: {np.max(prices)}')
 
         # price filtering
+        prices = np.array(prices)
         q1, q3 = np.percentile(prices, 25), np.percentile(prices, 75)
         iqr = 1.5 * (q3 - q1)
         i = 0
-        while i < len(prices):
+        while i < prices.size:
             if prices[i] <= 0 or prices[i] >= iqr:
-                del prices[i]
+                print('hello! i:',i)
+                np.delete(prices, i)
             else:
                 i += 1
         
