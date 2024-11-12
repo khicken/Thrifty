@@ -31,9 +31,6 @@ def scraper(img_name: str) -> tuple[str, float]:
         options = webdriver.ChromeOptions()
         options.binary_location = './chrome-win64/chrome.exe'
         options.add_argument('--headless=new')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
         browser = webdriver.Chrome(service=service, options=options)
 
         # boot into google.com like a regular human
@@ -89,16 +86,13 @@ def scraper(img_name: str) -> tuple[str, float]:
         # print(f'min: {np.min(prices)} \n max: {np.max(prices)}')
 
         # price filtering
-        prices = np.array(prices)
+        new_prices = []
         q1, q3 = np.percentile(prices, 25), np.percentile(prices, 75)
         iqr = 1.5 * (q3 - q1)
-        i = 0
-        while i < prices.size:
-            if prices[i] <= 0 or prices[i] >= iqr:
-                print('hello! i:',i)
-                np.delete(prices, i)
-            else:
-                i += 1
+        for p in prices:
+            if p > 0 or p >= iqr: # if price is nonnegative and isn't outlier, it's valid
+                new_prices.append(p)
+        prices = new_prices
         
         # new price estimates
         print(f'datapoints: {len(prices)} -- median: {np.median(prices)} -- mean: {np.mean(prices)} -- 25th percentile: {np.percentile(prices, 25)} -- 10th percentile: {np.percentile(prices, 10)}')
