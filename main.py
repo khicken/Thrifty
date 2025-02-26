@@ -149,7 +149,7 @@ def main(img_q: Queue, txt_q: Queue):
             ref_frame = frame
             start_time = curr_time # reset for another interval
             updateLabel('Background image set!', (0, 255, 0))
-            status_text = 'whar'
+            status_text = 'Background image set!'
             ref_set = True
         elif key == ord(' ') and debug: # for testing
             img_name = time.strftime("%Y-%m-%d_%H%M%S.png", time.localtime(curr_time))
